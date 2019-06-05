@@ -19,6 +19,10 @@ class VeridexHelper {
     }
 
     public void execute(File filePath) {
+        if (filePath == null || !filePath.exists()) {
+            project.logger.error("filePath == null or not exist")
+            return
+        }
         File veridexFile = getVeridexFile()
         File apacheStubsFile = getApacheStubsFile()
         File systemStubsFile = getSystemStubsFile()
@@ -31,6 +35,8 @@ class VeridexHelper {
             project.logger.error("file not exist")
             return
         }
+
+        project.logger.error("veridex current file: ${filePath}")
         project.exec(new Action<ExecSpec>() {
             @Override
             void execute(ExecSpec execSpec) {

@@ -1,5 +1,6 @@
 package io.github.lizhangqu.veridex
 
+import com.android.build.gradle.api.ApkVariant
 import com.android.build.gradle.api.BaseVariant
 import com.android.build.gradle.internal.pipeline.TransformTask
 import groovy.io.FileType
@@ -13,6 +14,7 @@ import org.gradle.api.tasks.TaskCollection
  */
 class VeridexPlugin implements Plugin<Project> {
 
+    @SuppressWarnings("UnnecessaryQualifiedReference")
     @Override
     void apply(Project project) {
         if (!project.plugins.hasPlugin('com.android.application')) {
@@ -26,31 +28,75 @@ class VeridexPlugin implements Plugin<Project> {
             variants = project.android.getLibraryVariants()
         }
 
+        VeridexHelper veridexHelper = new VeridexHelper(project)
         variants?.all { BaseVariant variant ->
             def variantName = variant.getName()
-            def mergeNativeLibsTask = findMergeNativeLibsTask(project, variantName)
-            if (mergeNativeLibsTask) {
-                mergeNativeLibsTask.doLast {
+            project.tasks.create("veridex${variantName.capitalize()}") {
+                setGroup("veridex")
+                dependsOn project.tasks.findByName("assemble${variantName.capitalize()}")
+                doLast {
+                    def mergeNativeLibsTask = VeridexPlugin.findMergeNativeLibsTask(project, variantName)
                     Map<String, File> bundles = new HashMap<>()
-                    mergeNativeLibsTask.getOutputs().files.each {
+                    mergeNativeLibsTask?.getOutputs()?.files?.each {
                         if (it.isFile()) {
-                            collectBundle(project, it, bundles)
+                            VeridexPlugin.collectBundle(project, it, bundles)
                         } else if (it.isDirectory()) {
                             it.eachFileRecurse(FileType.FILES) {
-                                collectBundle(project, it, bundles)
+                                VeridexPlugin.collectBundle(project, it, bundles)
                             }
                         }
                     }
                     bundles.each { String md5, File bundleFile ->
+                        veridexHelper.execute(bundleFile)
+                    }
 
+                    File apkFile = VeridexPlugin.getApkFile(project, variant)
+                    veridexHelper.execute(apkFile)
+                }
+            }
+
+        }
+    }
+
+    static File getApkFile(Project project, BaseVariant variant) {
+        def variantData = variant.getMetaClass().getProperty(variant, 'variantData')
+        def variantScope = variantData.getScope()
+        try {
+            //>=3.3.0
+            String taskName = variantScope.getTaskContainer().getPackageAndroidTask().getName()
+            def packageApplication = project.getTasks().findByName(taskName)
+            return new File(packageApplication.getOutputDirectory(), packageApplication.getMetaClass().getProperty(packageApplication, "outputScope").getMainSplit().getOutputFileName() - '-unaligned')
+        } catch (Exception e) {
+
+        }
+
+        try {
+            def packageApplication = variant.getPackageApplication()
+            return new File(packageApplication.getOutputDirectory(), packageApplication.getMetaClass().getProperty(packageApplication, "outputScope").getMainSplit().getOutputFileName() - '-unaligned')
+        } catch (Exception e) {
+            //<=2.3.3
+            try {
+                File apkFile = variantData.getOutputs().get(0).getScope().getFinalPackage()
+                return new File(apkFile.getAbsolutePath() - "-unaligned")
+            } catch (Exception e1) {
+                try {
+                    //<=2.2.3
+                    File apkFile = variantData.getOutputs().get(0).getScope().getFinalApk()
+                    return new File(apkFile.getAbsolutePath() - "-unaligned")
+                } catch (Exception e2) {
+                    try {
+                        File apkFile = variantData.getOutputs().get(0).getScope().getPackageApk()
+                        return new File(apkFile.getAbsolutePath() - "-unaligned")
+                    } catch (Exception e3) {
                     }
                 }
             }
         }
+        return null
     }
 
     static boolean collectBundle(Project project, File file, Map<String, File> bundles) {
-        if (isBundle(file)) {
+        if (file.getParentFile().getName() != 'zip-cache' && isBundle(file)) {
             String bundleMd5 = file.withInputStream {
                 //noinspection UnnecessaryQualifiedReference
                 new java.security.DigestInputStream(it, java.security.MessageDigest.getInstance('MD5')).withStream {
