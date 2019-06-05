@@ -13,3 +13,7 @@ buildscript {
 apply plugin: 'veridex'
 ```
 
+
+### Thanks
+ 
+ - [appcompat](https://android.googlesource.com/platform/prebuilts/runtime/+/master/appcompat)
