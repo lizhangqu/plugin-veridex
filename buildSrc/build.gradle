@@ -1,0 +1,93 @@
+apply plugin: 'groovy'
+apply plugin: 'java'
+
+repositories {
+    maven {
+        url 'https://maven.aliyun.com/repository/public'
+    }
+    maven {
+        url 'https://maven.aliyun.com/repository/central'
+    }
+    maven {
+        url 'https://maven.aliyun.com/repository/gradle-plugin'
+    }
+    maven {
+        url 'https://maven.aliyun.com/repository/google'
+    }
+    maven {
+        url 'https://maven.aliyun.com/repository/jcenter'
+    }
+    maven {
+        url 'https://dl.google.com/dl/android/maven2/'
+    }
+    jcenter()
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    compile localGroovy()
+    compile gradleApi()
+
+    File localFile = project.rootProject.file('../local.properties')
+    Properties extProperties = new Properties()
+    if (!localFile.exists()) {
+        localFile = project.rootProject.file('local.properties')
+    }
+    if (localFile.exists()) {
+        extProperties.load(localFile.newDataInputStream())
+    }
+    def androidGradlePluginVersion = "3.2.1"
+    if (extProperties.containsKey('gradleVersion')) {
+        androidGradlePluginVersion = extProperties.get("gradleVersion") as String
+    }
+    if (project.hasProperty('gradleVersion')) {
+        androidGradlePluginVersion = project.getProperties().get("gradleVersion") as String
+    }
+    project.logger.error "buildSrc build.gradle androidGradlePluginVersion ${androidGradlePluginVersion}"
+
+    compile "com.android.tools.build:gradle:${androidGradlePluginVersion}"
+
+    compile 'org.javassist:javassist:3.20.0-GA'
+}
+
+buildscript {
+    repositories {
+        maven {
+            url 'https://maven.aliyun.com/repository/public'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/central'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/gradle-plugin'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/google'
+        }
+        maven {
+            url 'https://maven.aliyun.com/repository/jcenter'
+        }
+        maven {
+            url 'https://dl.google.com/dl/android/maven2/'
+        }
+        jcenter()
+        mavenCentral()
+        mavenLocal()
+    }
+    dependencies {
+        classpath 'io.github.lizhangqu:core-publish:1.4.0'
+    }
+    configurations.all {
+        it.resolutionStrategy.cacheDynamicVersionsFor(5, 'minutes')
+        it.resolutionStrategy.cacheChangingModulesFor(0, 'seconds')
+    }
+}
+
+group = "io.github.lizhangqu"
+archivesBaseName = "plugin-veridex"
+apply plugin: 'android.publish'
+
+pom {
+    exclude "com.android.tools.build:gradle"
+}
