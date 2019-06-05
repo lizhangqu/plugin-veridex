@@ -1,6 +1,5 @@
 package io.github.lizhangqu.veridex
 
-import com.android.build.gradle.api.ApkVariant
 import com.android.build.gradle.api.BaseVariant
 import com.android.build.gradle.internal.pipeline.TransformTask
 import groovy.io.FileType
