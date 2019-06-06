@@ -4,8 +4,12 @@ import org.apache.commons.io.FilenameUtils
 import org.gradle.api.Action
 import org.gradle.api.Project
 import org.apache.tools.ant.taskdefs.condition.Os
+import org.gradle.process.ExecResult
 import org.gradle.process.ExecSpec
 import org.gradle.util.GFileUtils
+
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 
 
 /**
@@ -37,15 +41,57 @@ class VeridexHelper {
         }
 
         project.logger.error("veridex current file: ${filePath}")
-        project.exec(new Action<ExecSpec>() {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()
+        ExecResult execResult = project.exec(new Action<ExecSpec>() {
             @Override
             void execute(ExecSpec execSpec) {
                 execSpec.executable veridexFile
                 execSpec.args("--core-stubs=${apacheStubsFile.getAbsolutePath()}:${systemStubsFile.getAbsolutePath()}")
                 execSpec.args("--api-flags=${hiddenApiFlagFile.getAbsolutePath()}")
                 execSpec.args("--dex-file=${filePath.getAbsolutePath()}")
+                execSpec.standardOutput byteArrayOutputStream
             }
         })
+
+        VeridexList veridexList = new VeridexList()
+
+        Pattern pattern = Pattern.compile('^#(?<number>\\d+):\\s(?<reflectionOrLinking>.*)\\s(?<type>.*)\\s(?<callee>.*)\\suse\\(s\\):$')
+        new BufferedReader(new StringReader(byteArrayOutputStream.toString())).withReader { reader ->
+            String line = reader.readLine()?.trim()
+            if (line?.startsWith("To run an analysis that can give more reflection accesses,")) {
+                return
+            }
+            if (line?.startsWith("but could include false positives, pass the --imprecise flag.")) {
+                return
+            }
+            while (line?.startsWith("#")) {
+                Matcher matcher = pattern.matcher(line)
+                if (matcher.matches()) {
+                    int number = matcher.group("number")?.toInteger()
+                    String reflectionOrLinking = matcher.group("reflectionOrLinking")
+                    boolean reflection = (reflectionOrLinking == "Reflection")
+                    boolean linking = (reflectionOrLinking == "Linking")
+                    String type = matcher.group("type")
+                    String callee = matcher.group("callee")
+
+                    VeridexResult result = new VeridexResult()
+                    result.setNumber(number)
+                    result.setReflection(reflection)
+                    result.setLinking(linking)
+                    result.setType(type)
+                    result.setCallee(callee)
+                    String caller = reader.readLine()?.trim()
+                    while (caller != null && caller.length() > 0) {
+                        result.addCaller(caller)
+                        caller = reader.readLine()?.trim()
+                    }
+                    veridexList.add(result)
+                    line = reader.readLine()?.trim()
+                }
+            }
+        }
+
+        project.logger.error("${veridexList.getReport()}")
     }
 
 

@@ -70,27 +70,34 @@ class VeridexPlugin implements Plugin<Project> {
         }
 
         try {
+            //>=3.0.0
             def packageApplication = variant.getPackageApplication()
             return new File(packageApplication.getOutputDirectory(), packageApplication.getMetaClass().getProperty(packageApplication, "outputScope").getMainSplit().getOutputFileName() - '-unaligned')
         } catch (Exception e) {
-            //<=2.3.3
-            try {
-                File apkFile = variantData.getOutputs().get(0).getScope().getFinalPackage()
-                return new File(apkFile.getAbsolutePath() - "-unaligned")
-            } catch (Exception e1) {
-                try {
-                    //<=2.2.3
-                    File apkFile = variantData.getOutputs().get(0).getScope().getFinalApk()
-                    return new File(apkFile.getAbsolutePath() - "-unaligned")
-                } catch (Exception e2) {
-                    try {
-                        File apkFile = variantData.getOutputs().get(0).getScope().getPackageApk()
-                        return new File(apkFile.getAbsolutePath() - "-unaligned")
-                    } catch (Exception e3) {
-                    }
-                }
-            }
+
         }
+
+        try {
+            //>=2.3.3
+            File apkFile = variantData.getOutputs().get(0).getScope().getFinalPackage()
+            return new File(apkFile.getAbsolutePath() - "-unaligned")
+        } catch (Exception e1) {
+
+        }
+        try {
+            //>=2.2.3
+            File apkFile = variantData.getOutputs().get(0).getScope().getFinalApk()
+            return new File(apkFile.getAbsolutePath() - "-unaligned")
+        } catch (Exception e2) {
+
+        }
+        try {
+            //<2.2.3
+            File apkFile = variantData.getOutputs().get(0).getScope().getPackageApk()
+            return new File(apkFile.getAbsolutePath() - "-unaligned")
+        } catch (Exception e3) {
+        }
+
         return null
     }
 
