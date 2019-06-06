@@ -33,6 +33,24 @@ class VeridexList extends ArrayList<VeridexResult> {
             }
         }
         stringBuilder.append("${number} hidden API(s) used: ${linked} linked against, ${reflection} through reflection\n")
+        if (!count.containsKey("blacklist")) {
+            count.put("blacklist", 0)
+        }
+        if (!count.containsKey("blacklist,core-platform-api")) {
+            count.put("blacklist,core-platform-api", 0)
+        }
+        if (!count.containsKey("greylist")) {
+            count.put("greylist", 0)
+        }
+        if (!count.containsKey("greylist-max-o")) {
+            count.put("greylist-max-o", 0)
+        }
+        if (!count.containsKey("greylist-max-p")) {
+            count.put("greylist-max-p", 0)
+        }
+        if (!count.containsKey("greylist,core-platform-api")) {
+            count.put("greylist,core-platform-api", 0)
+        }
         count?.each {
             stringBuilder.append("       ${it.value} in ${it.key}\n")
         }
